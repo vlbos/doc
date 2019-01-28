@@ -192,80 +192,42 @@ bp schedule需要占用大量空间，因此在另外的表`prodsches`中存储�
 
 *5. Section*
 Section是chaindb的核心概念和创新，意思是一段连续的区块头，Section的管理也是最ibc.chain的核心的逻辑。
-
-
-
-每个section的起始区块头的不能包含`header.new_producers`，
-并且其`pending_schedule.version`必须等于`active_schedule.version`，并且`active_schedule.version` 必须等于
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 跨链交易
-
-
-
-
-### 插件
-
+使用section的目的是降低cpu消耗，只有在BP schedule有变化或有跨链交易时才需要同步一部分区块头。
+任何section的起始区块不能是 bp schedule 更换过程中的区块，也就是说，任何一个seciton的起始区块的`pending_schedule.version`必须等于
+`active_schedule.version`，并且一个section的起始区块头的`active_schedule`必须和上一个section最后区块的`active_schedule`相同，
+这样就保证了在任意两个section之间一定不存在BP schedule的更换，每一此BP schedule更换的完整过程必须在某个section中完成，从而确保
+section数据的可信性。
+
+### 四、跨链交易
+
+*1. 跨链交易三部曲*
+一笔跨链交易分为三个过程，下面以将EOS从EOS主网跨链转账到BOS主网为例说明，首先用户在EOS主网发起一笔跨链建议`orig_trx`，在EOS侧`ibc.token`合约的
+`origtrx`表中会记录此交易信息，当这笔交易所在区块进入lib后，EOS侧IBC中继(relay_eos)将此交易和交易相关信息(区块信息及Merkle路径)
+传递到BOS侧中继(relay_bos)；relay_bos构造cash交易并调用BOS侧`ibc.token`合约的cash接口，如果调用成功，
+cash函数中会给目标用户发行对应的token；等cash交易所在的区块进入lib后，relay_bos会将`cash_trx`和此交易相关信息（区块信息及Merkle路径）
+传递到relay_eos，relay_eos构造cashconfirm交易并调用EOS侧`ibc.token`合约的cashconfirm接口，cashconfirm会删除EOS侧`ibc.token`合约
+中对`orig_trx`的记录，至此一笔完整的跨链交易完成。
+
+*2. 跨链失败的交易*
+跨链交易是可能失败的，比如指定的账户在对方链上不存在，或者由于网络环境恶劣，导致调用cash接口失败，未能成功跨链的交易会被回滚，即原路退还用户的资产，
+然而现在的IBC系统是交易驱动的，失败的IBC交易需要等到有成功的IBC交易完成后才会被回滚。（注：后续版本升级会让失败的交易尽快回滚）
+
+*3. 如何防止replay攻击，即双花攻击*
+防止双花攻击分为两个阶段：
+1，一笔成功的跨链交易只能执行一次cash，否则会造成重复cash。
+2，对于每一个cash交易，必须将其相关信息传回原链执行cashconfirm，以消除合约中记录的原始交易信息，否则会出现即在目的链上给用户发行了token，
+又将原链的token退还给了用户。
+
+cash函数是ibc.token的核心逻辑，`ibc.token`合约中记录着最近执行cash的原始交易id，即`oirg_trx_id`，并且新的cash的`orig_trx`的区块编号必须
+大于或等于所有`orig_trx`所在的区块编号，也就是说必须按原始交易在原链按区块的顺序进行cash，（执行cash时，原链某个区块内的跨链交易顺序是无关紧要的）
+，再结合trx_id检查，可以确保一笔跨链交易只能执行一次cash。
+
+同样，cashconfirm接口会检查cash交易的编号`seq_num`，此编号必须逐一递增，以确保所有在目的链上的cash交易都会删除在原链上的原始交易记录，
+从而确保不会出现双花的情况。
+
+
+### 五、插件
+
+插件的作用分为两部分：1，轻客户端同步；2，跨链交易传递。
+核心逻辑请参考`ibc_plugin_impl::ibc_core_checker()`
 
