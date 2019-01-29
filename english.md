@@ -86,7 +86,6 @@ cross-chains operation, assume to one-to-ten situation, each chain needs to main
 in order to maintain these light clients, it needs to consume 3.5% of the whole network CPU of a single chain,
 this proportion is too high, therefore, we need to find a more reasonable solution.
 
-
 The process of designing inter-blockchain communication is a process of finding credible evidence. 
 Is there a scheme that does not need to synchronize the whole block information, but also can guarantee the credibility
 of light clients? The bottom of EOSIO source code has been prepared for this purpose.
@@ -98,6 +97,7 @@ we will not accept transaction verification until the replacement is completed. 
 of BP replacement is dealt with, which will be described in more detail bellow.
 Therefore, using this scheme can greatly reduce the amount of block headers that need to be synchronized,
 and only when the BP list is updated or cross-chain transactions occured, that it's needed synchronized block headers.
+
 In order to achieve this goal, the concept of `section` is introduced in ibc.chain. 
 A section records a batch of continuous block headers. Section does not store block headers, instead, 
 it records the first block number (first) and the last block number (last) of the block header, block headers are
@@ -111,15 +111,48 @@ until schedule replacement finished and 'valid' become true, then continue cross
 #### 3.3 How to Ensure the Reliability of Light Clients
 ** 3.3.1 forkdb**  
 * 1. How to append a new block to forkdb *  
-A running NodeOS node maintains two underlying data structures [blog] (https://github.com/EOSIO/eos/blob/master/libraries/chain/include/eosio/chain/block_log.hpp)
-And [forkdb] (https://github.com/EOSIO/eos/blob/master/libraries/chain/include/eosio/chain/fork_database.hpp),
-Blog is used to store irreversible block information. Its stored data is serialized `signed_block', forkdb is used to store reversible block information, and its stored data is `block_state'.
-`block_state'contains more block-related information than `signed_block'. A block must first be appended to forkdb before it can eventually become irreversible and remove forkdb into blog.
-How can the `block_state'information of a block be obtained? It is not the BP of the production block that transfers `block_state' of the production block to other BP and full-node, P2P network through P2P network.
-Pass only [signed_block] (https://github.com/EOSIO/eos/blob/master/plugins/net_plugin/include/eosio/net_plugin/protocol.hpp L142),
-When a node receives a `signed_block'over a P2P network, it uses this `signed_block' to construct `block_state'and verify the signature.
-[Relevance function] (https://github.com/EOSIO/eos/blob/master/libraries/chain/block_header_state.cpp#L144),
-The key points to be clarified are: 1. `blockroot_merkle', 2. `get_scheduled_producer()', 3. `verify_signee()'.
+A running eosio node maintains two underlying data structures 
+[blog](https://github.com/EOSIO/eos/blob/master/libraries/chain/include/eosio/chain/block_log.hpp)
+and [forkdb](https://github.com/EOSIO/eos/blob/master/libraries/chain/include/eosio/chain/fork_database.hpp),
+blog is used to store irreversible block information, its stored data is serialized `signed_block`, 
+forkdb is used to store reversible block information, and its stored data is `block_state`.
+`block_state` contains more block-related information than `signed_block`. A block must first be appended to forkdb 
+before it can eventually become irreversible and remove from forkdb into blog.
+How can the `block_state` information of a block be obtained? It is not thart BP of the production block transfers 
+`block_state` to other BP nodes and full-nodes, P2P network eos eosio pass only 
+[signed_block](https://github.com/EOSIO/eos/blob/master/plugins/net_plugin/include/eosio/net_plugin/protocol.hpp#L142),
+When a node receives a `signed_block` over P2P network, it uses this `signed_block` to construct `block_state` 
+then verify the BP signature. [Relevance function](https://github.com/EOSIO/eos/blob/master/libraries/chain/block_header_state.cpp#L144),
+The key points should be clarified are: 1. `blockroot_merkle`, 2. `get_scheduled_producer()`, 3. `verify_signee()`.
+
+The signature verification related function are:
+```
+  digest_type   block_header_state::sig_digest()const {
+     auto header_bmroot = digest_type::hash( std::make_pair( header.digest(), blockroot_merkle.get_root() ) );
+     return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
+  }
+
+  public_key_type block_header_state::signee()const {
+    return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
+  }
+
+  void block_header_state::verify_signee( const public_key_type& signee )const {
+     EOS_ASSERT( block_signing_key == signee, wrong_signing_key, "block not signed by expected key",
+                 ("block_signing_key", block_signing_key)( "signee", signee ) );
+  }
+```
+
+The first step in verifying signature is to obtain signature digest, i.e. `sig_digest()`, 
+which uses `header.digest()`, `blockroot_merkle.get_root()` and `pending_schedule_hash`.
+The second step is to obtain the signature public key, i.e. `signee ()`, which compute the BP public key through
+`producer_signature ` and `sig_digest ()`.
+The third step is to verify whether the public key is correct, i.e. `verify_signee()`, which is called in 
+`block_header_state:: next()`, after validation, a block is added to forkdb main branch.
+
+So every block which added to forkdb has undergone a very rigorous and comprehensive verification.
+The core logic contains `blockroot_merkle`, `get_scheduled_producer()` and `verify_signee()`.
+The ibc.chain contract fully inherits the rigorous validity of forkdb.
+
 
 
 

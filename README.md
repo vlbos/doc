@@ -112,7 +112,7 @@ get_scheduled_producer()
 ```
 验证签名的第一步是获得区块摘要，即`sig_digest()`，此函数中用到了`header.digest()`,`blockroot_merkle.get_root()`和`pending_schedule_hash`；
 第二步是获得签名公钥，即`signee()`，通过区块的`producer_signature`和`sig_digest()`计算BP公钥；
-第三步是验证公钥是否正确，即`verify_signee()`，此函数在`block_header_state::next()`被调用；验证通过后一个区块被追加的forkdb中的分支中。
+第三步是验证公钥是否正确，即`verify_signee()`，此函数在`block_header_state::next()`被调用；验证通过后，一个区块被追加的forkdb中的分支中。
 
 所以在forkdb中每添加一个区块都经过了非常严格全面的效验，核心是包括`blockroot_merkle`，`get_scheduled_producer()`和`verify_signee()`,
 在ibc.chain合约完全继承了forkdb严格的效验。
