@@ -142,11 +142,11 @@ wasm接口`set_proposed_producers()`，通过一系列检查后，会将新的sc
 
 第二部，当此区块变为不可逆之后，会在当前的pending区块中设置新的名单`header.new_producers`，并删除`global_property_object`对象，当前
 pending区块编号会被记录到`pending_schedule_lib_num`，此时在nodeos日志中可以看到新的名单；具体逻辑参考`controller::start_block() // Promote proposed schedule to pending schedule.`。
-也就是说新的名单从`proposed schedule`变为`pending schedule`大约需要经历325 ~ 336个区块。从这里开始，
+也就是说新的名单从`proposed schedule`变为`pending schedule`大约需要经历325至336个区块。从这里开始，
 后面区块`block_header_state`的`pending_schedule.version`会比`active_schedule.version`大1.
 
 第三步，当`pending_schedule_lib_num`变为不可逆后，`active_schedule`会被`pending schedule`替换，整个的BP更换过程完成。
-从`pending schedule`出现到其变为`active_schedule`同样需要经历约325 ~ 336区块。
+从`pending schedule`出现到其变为`active_schedule`同样需要经历约325至336区块。
 
 
 IBC系统的轻客户端同样需要继承forkdb的这些逻辑，才能实现可信的轻客户端。然而，轻客户端是在合约中实现，需要充分考虑合约的特性和限制，
