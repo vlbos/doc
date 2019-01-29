@@ -144,8 +144,8 @@ The signature verification related function are:
 
 The first step in verifying signature is to obtain signature digest, i.e. `sig_digest()`, 
 which uses `header.digest()`, `blockroot_merkle.get_root()` and `pending_schedule_hash`.
-The second step is to obtain the signature public key, i.e. `signee ()`, which compute the BP public key through
-`producer_signature ` and `sig_digest ()`.
+The second step is to obtain the signature public key, i.e. `signee()`, which compute the BP public key through
+`producer_signature ` and `sig_digest()`.
 The third step is to verify whether the public key is correct, i.e. `verify_signee()`, which is called in 
 `block_header_state:: next()`, after validation, a block is added to forkdb main branch.
 
