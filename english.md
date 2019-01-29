@@ -109,8 +109,8 @@ until schedule replacement finished and 'valid' become true, then continue cross
 
 
 #### 3.3 How to Ensure the Reliability of Light Clients
-** 3.3.1 forkdb**  
-* 1. How to append a new block to forkdb *  
+**3.3.1 forkdb**  
+*1. How to append a new block to forkdb*  
 A running eosio node maintains two underlying data structures 
 [blog](https://github.com/EOSIO/eos/blob/master/libraries/chain/include/eosio/chain/block_log.hpp)
 and [forkdb](https://github.com/EOSIO/eos/blob/master/libraries/chain/include/eosio/chain/fork_database.hpp),
