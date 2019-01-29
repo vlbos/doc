@@ -1,6 +1,7 @@
 
-BOS IBC 技术白皮书
+EOSIO体系公链间跨链交互原理及实现
 -------
+(BOSCORE TEAM)
 
 本文将介绍IBC技术原理，并对BOSCORE团队开发的IBC合约及插件进行深入介绍。
 
@@ -15,20 +16,19 @@ BOS IBC 技术白皮书
 ### 二、关键概念及数据结构
 - Simple Payment Verification (SPV)  
   简单支付验证技术最早在中本聪的比特币白皮书中提出[Bitcoin](https://bitcoin.org/bitcoin.pdf)，用于验证一笔交易存在于区块链中。
-  SPV客户端存储着连续的区块头，而没有区块体，因此只需占用很小的存储空间。当获得一笔交易和这笔交易的`Merkle path`后，可以验证这笔交易是否
+  `SPV client`存储着连续的区块头，但没有区块体，因此只需占用很小的存储空间。当获得一笔交易和这笔交易的`Merkle path`后，可以验证这笔交易是否
   存在于区块链上。
-- Lightwight client (LWC)  
-  轻客户端，即由区块头组成的一条轻量的链，`Lightwight client`也可以称为`SPV client`
+- Lightwight client (lwc)  
+  轻客户端，即`SPV client`，即由区块头组成的一条轻量的链。
 - Merkle path
-  默克尔路径。为验证一笔交易是否存在于某个区块中，只需要提供交易本身和交易的在所在区块的`merkle branch`，而无需提供整个区块体，通过计算`merkle branch`并和区块头中
-  记录的`merkle root`对比，若相等，则认为此交易存在于此区块中。`Merkle path`也可以成为`Merkle branch`  
+  默克尔路径。为验证一笔交易是否存在于某个区块中，只需要提供交易原始数据和交易在所在区块的`merkle path`，而无需提供整个区块体，通过计算`merkle path`并和区块头中
+  记录的`merkle root`对比，若相等，则说明此交易存在于此区块中。`merkle path`也被称为`merkle branch`  
 - Block Producer Schedule  
-  `BP Schedule`是基于DPOS机制的EOSIO体系公链决用于定生产区块权利的技术，新的`BP Schedule`是由上一批`BP Schedule`包含的`Block Producers`认证通过后生效
-  以此确保严格的BP权利交接，轻客户端中跟随主网的`BP Schedule`是IBC系统逻辑的一项核心技术。
+  `BP Schedule`是基于DPOS机制的EOSIO体系公链用于决定生产区块权利的技术，新的`BP Schedule`是由上一批`BP Schedule`包含的`Block Producers`认证通过后生效
+  以此确保严格的BP权利交接，在轻客户端中跟随对应主网的`BP Schedule`是IBC系统逻辑的一项核心技术。
 - forkdb  
   EOSIO节点在运行时，有两个底层的db用于存储区块信息，一个是`blog`即`block log`，用于存储不可逆区块，一个是`forkdb`，用于存储可逆区块。
   forkdb存储的是当前区块链最顶端的一部分区块信息，一个区块首先要被forkdb接受才能最终进入不可逆区块，IBC系统在合约实现的轻客户端主要参考了forkdb的逻辑。
-- incremental_merkle
 
 ### 三、轻客户端
 为了解决跨链问题，首先要解决的是轻客户端如何实现的问题。
@@ -256,3 +256,8 @@ ibc_plugin主要参考了net_plugin的框架。
 
 *3. 支持token以外其他类型数据的跨链*
 
+
+### 九、参考
+[Inter-blockchain Communication via Merkle Proofs with EOS.IO](https://steemit.com/eos/@dan/inter-blockchain-communication-via-merkle-proofs-with-eos-io)
+[Bitcoin](https://bitcoin.org/bitcoin.pdf)
+[Chain Interoperability](https://static1.squarespace.com/static/55f73743e4b051cfcc0b02cf/t/5886800ecd0f68de303349b1/1485209617040/Chain+Interoperability.pdf)
